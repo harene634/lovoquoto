@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Controlled Ball Game</title>
+    <!-- Bootstrap CSS -->
+    <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            transition: background-color 0.5s ease; /* Smooth transition for background color */
+            position: relative;
+            overflow: hidden;
+            height: 100vh; /* Ensure the body takes up the full viewport height */
+        }
+        #game-container {
+            width: 1000px;
+            height: 600px;
+            margin: 20px auto;
+            border: 2px solid #000;
+            position: relative;
+            overflow: hidden;
+            display: inline-block;
+        }
+        #ball {
+            width: 50px;
+            height: 50px;
+            background-color: #ff0000;
+            border-radius: 50%; /* Added to make the ball round */
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            transition: all 0.3s ease; /* Added for smooth size transition */
+        }
+        .obstacle {
+            width: 40px;
+            height: 40px;
+            background-color: #05c3f7;
+            position: absolute;
+            border-radius: 50%; /* Rounded obstacles */
+        }
+        #score {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            color: #fff; /* Text color */
+            font-weight: bold; /* Bold text */
+        }
+        #love-quote {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) scale(0); /* Initially hidden and scaled down */
+            opacity: 0; /* Initially hidden */
+            color: #fff; /* Text color */
+            font-size: 24px; /* Adjust font size as needed */
+            z-index: 999; /* Ensure it's above other elements */
+            transition: all 0.5s ease; /* Smooth transition for animation */
+        }
+        .corner-love-quote {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            opacity: 1; /* Initially visible */
+            transition: all 0.5s ease; /* Smooth transition for animation */
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <div id="score">Collisions: 0</div>
+    <div id="love-quote"></div>
+    <div id="game-container" class="bg-dark">
+        <div id="ball"></div>
+    </div>
+</div>
+
+<!-- jQuery -->
+<script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+<!-- Bootstrap JS -->
+<script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.bundle.min.js"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        const ball = document.getElementById('ball');
+        const gameContainer = document.getElementById('game-container');
+        const scoreDisplay = document.getElementById('score');
+        const loveQuoteDisplay = document.getElementById('love-quote');
+        const containerWidth = gameContainer.offsetWidth;
+        const containerHeight = gameContainer.offsetHeight;
+        const ballSize = ball.offsetWidth;
+        let ballX = 0;
+        let ballY = containerHeight - ballSize;
+        let ballSpeed = 5;
+        let collisions = 0;
+        let isClimbing = false; // Initialize climbing mode to false
+
+        let obstacles = [];
+
+        const loveQuotes = [
+            "You are my sunshine.",
+            "I love you more than words can say.",
+            "You make my heart skip a beat.",
+            "You are the reason I smile every day.",
+            "Forever isn't long enough with you.",
+            "You are the love of my life.",
+            "My heart is happiest when I'm with you.",
+            "You are my today and all of my tomorrows.",
+            "In all the world, there is no heart for me like yours. In all the world, there is no love for you like mine.",
+            "The best thing to hold onto in life is each other.",
+            "I have waited for this opportunity for what seems a lifetime, to hear you say the words that until now, I've only hoped you felt.",
+            "You are the finest, loveliest, tenderest, and most beautiful person I have ever known - and even that is an understatement.",
+            "I saw that you were perfect, and so I loved you. Then I saw that you were not perfect and I loved you even more.",
+            "The greatest happiness you can have is knowing that you do not necessarily require happiness.",
+            "To love is nothing. To be loved is something. But to love and be loved, that’s everything.",
+            "Love does not consist of gazing at each other, but in looking outward together in the same direction."
+        ];
+
+        function createObstacle() {
+            const obstacle = document.createElement('div');
+            obstacle.classList.add('obstacle');
+            obstacle.style.left = Math.random() * (containerWidth - 40) + 'px';
+            obstacle.style.bottom = containerHeight + 'px';
+            gameContainer.appendChild(obstacle);
+            obstacles.push(obstacle);
+        }
+
+        function updateObstacles() {
+            obstacles.forEach(obstacle => {
+                let obstacleBottom = parseInt(obstacle.style.bottom);
+                obstacle.style.bottom = (obstacleBottom - ballSpeed) + 'px';
+                if (obstacleBottom < 0) {
+                    obstacle.remove();
+                    obstacles.shift();
+                }
+            });
+        }
+
+        function updateBallPosition() {
+            ball.style.left = ballX + 'px';
+            ball.style.bottom = ballY + 'px';
+        }
+
+        function moveBall(direction) {
+            if (!isClimbing) {
+                if (direction === 'left' && ballX > 0) {
+                    ballX -= ballSpeed;
+                } else if (direction === 'right' && ballX < containerWidth - ballSize) {
+                    ballX += ballSpeed;
+                } else if (direction === 'up' && ballY < containerHeight - ballSize) {
+                    ballY += ballSpeed;
+                } else if (direction === 'down' && ballY > 0) {
+                    ballY -= ballSpeed;
+                }
+            } else {
+                if (direction === 'left' && ballX > 0) {
+                    ballX -= ballSpeed / 0.4; // Slow down horizontal movement while climbing
+                } else if (direction === 'right' && ballX < containerWidth - ballSize) {
+                    ballX += ballSpeed / 0.4; // Slow down horizontal movement while climbing
+                } else if (direction === 'up' && ballY < containerHeight - ballSize) {
+                    ballY += ballSpeed; // Increase climbing speed
+                } else if (direction === 'down' && ballY > 0) {
+                    ballY -= ballSpeed * 2; // Increase sliding speed
+                }
+            }
+            updateBallPosition();
+        }
+
+        function checkCollision() {
+            obstacles.forEach(obstacle => {
+                if (ballX < obstacle.offsetLeft + obstacle.offsetWidth &&
+                    ballX + ball.offsetWidth > obstacle.offsetLeft &&
+                    ballY < obstacle.offsetTop + obstacle.offsetHeight &&
+                    ballY + ball.offsetHeight > obstacle.offsetTop) {
+                    ball.style.width = (parseInt(ball.style.width) + 10) + 'px';
+                    ball.style.height = (parseInt(ball.style.height) + 10) + 'px';
+                    obstacle.remove();
+                    obstacles.shift();
+                    collisions++;
+                    scoreDisplay.textContent = `Collisions: ${collisions}`;
+                    // Change background color and show love quote after every 10 collisions
+                    if (collisions % 10 === 0) {
+                        changeBackgroundColor();
+                        showLoveQuote();
+                    }
+                }
+            });
+            // Check if collisions exceed 100 to change game mode
+            if (collisions > 20 && !isClimbing) {
+                isClimbing = true; // Set climbing mode
+                changeBackgroundColor();
+                showLoveQuote();
+            }
+        }
+
+        function changeBackgroundColor() {
+            const colors = ['#ff5733', '#ffcc33', '#33ff57', '#3380ff', '#ff33f9', '#ff3366']; // Vibrant colors
+            const randomColor = colors[Math.floor(Math.random() * colors.length)];
+            document.body.style.backgroundColor = randomColor;
+        }
+
+        function showLoveQuote() {
+            const randomQuote = loveQuotes[Math.floor(Math.random() * loveQuotes.length)];
+            loveQuoteDisplay.textContent = randomQuote;
+            loveQuoteDisplay.style.opacity = 1; // Make the love quote visible
+            loveQuoteDisplay.style.transform = 'translate(-50%, -50%) scale(1)'; // Scale up the quote
+            // Animate the love quote to the corner
+            setTimeout(() => {
+                loveQuoteDisplay.style.transform = 'translate(0, 0) scale(0.5)'; // Scale down the quote
+                loveQuoteDisplay.style.opacity = 0; // Hide the quote
+            }, 2000); // After 2 seconds, hide the quote
+        }
+
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'a') {
+                moveBall('left');
+            } else if (e.key === 'f') {
+                moveBall('right');
+            } else if (e.code === 'ArrowUp') {
+                moveBall('up');
+                isClimbing = true; // Set climbing mode
+            } else if (e.code === 'ArrowDown') {
+                moveBall('down');
+                isClimbing = false; // Set sliding mode
+            }
+        });
+
+        setInterval(() => {
+            if (Math.random() < 0.1) {
+                createObstacle();
+            }
+            updateObstacles();
+            checkCollision();
+        }, 50);
+    });
+</script>
+</body>
+</html>
+
